@@ -3,6 +3,15 @@ import time
 import requests
 pygame.font.init()
 
+GAME_FONT = pygame.font.SysFont("comicsans", 40)
+WIDTH, HEIGHT = 540, 600
+WHITE = (255, 255, 255)
+BLACK = (0, 0, 0)
+RED = (255, 0, 0)
+BUTTON_COLOR = (150, 150, 150)
+BUTTON_COLOR_HOVER = (100, 100, 100)
+SOLVE_BUTTON_TEXT = GAME_FONT.render("SOLVE", 1, BLACK)
+
 
 class Grid:
     def __init__(self, rows, cols, width, height, win):
@@ -54,9 +63,9 @@ class Grid:
                 thick = 4
             else:
                 thick = 1
-            pygame.draw.line(self.win, (0, 0, 0), (0, i*gap),
+            pygame.draw.line(self.win, BLACK, (0, i*gap),
                              (self.width, i*gap), thick)
-            pygame.draw.line(self.win, (0, 0, 0), (i * gap, 0),
+            pygame.draw.line(self.win, BLACK, (i * gap, 0),
                              (i * gap, self.height), thick)
 
         # Draw Cubes
@@ -79,10 +88,6 @@ class Grid:
             self.cubes[row][col].set_temp(0)
 
     def click(self, pos):
-        """
-        :param: pos
-        :return: (row, col)
-        """
         if pos[0] < self.width and pos[1] < self.height:
             gap = self.width / 9
             x = pos[0] // gap
@@ -160,39 +165,37 @@ class Cube:
         self.selected = False
 
     def draw(self, win):
-        fnt = pygame.font.SysFont("comicsans", 40)
-
         gap = self.width / 9
         x = self.col * gap
         y = self.row * gap
 
         if self.temp != 0 and self.value == 0:
-            text = fnt.render(str(self.temp), 1, (128, 128, 128))
+            text = GAME_FONT.render(str(self.temp), 1, (128, 128, 128))
             win.blit(text, (x+5, y+5))
         elif not(self.value == 0):
-            text = fnt.render(str(self.value), 1, (0, 0, 0))
+            text = GAME_FONT.render(str(self.value), 1, BLACK)
             win.blit(text, (x + (gap/2 - text.get_width()/2),
                             y + (gap/2 - text.get_height()/2)))
 
         if self.selected:
-            pygame.draw.rect(win, (255, 0, 0), (x, y, gap, gap), 3)
+            pygame.draw.rect(win, RED, (x, y, gap, gap), 3)
 
     def draw_change(self, win, g=True):
-        fnt = pygame.font.SysFont("comicsans", 40)
+        GAME_FONT = pygame.font.SysFont("comicsans", 40)
 
         gap = self.width / 9
         x = self.col * gap
         y = self.row * gap
 
-        pygame.draw.rect(win, (255, 255, 255), (x, y, gap, gap), 0)
+        pygame.draw.rect(win, WHITE, (x, y, gap, gap), 0)
 
-        text = fnt.render(str(self.value), 1, (0, 0, 0))
+        text = GAME_FONT.render(str(self.value), 1, BLACK)
         win.blit(text, (x + (gap / 2 - text.get_width() / 2),
                         y + (gap / 2 - text.get_height() / 2)))
         if g:
             pygame.draw.rect(win, (0, 255, 0), (x, y, gap, gap), 3)
         else:
-            pygame.draw.rect(win, (255, 0, 0), (x, y, gap, gap), 3)
+            pygame.draw.rect(win, RED, (x, y, gap, gap), 3)
 
     def set(self, val):
         self.value = val
@@ -233,80 +236,80 @@ def valid(bo, num, pos):
     return True
 
 
-def redraw_window(win, board, time, strikes):
-    win.fill((255, 255, 255))
+def redraw_window(win, board, time, strikes, hover):
+    win.fill(WHITE)
     # Draw time
-    fnt = pygame.font.SysFont("comicsans", 40)
-    text = fnt.render("Time: " + format_time(time), 1, (0, 0, 0))
-    win.blit(text, (540 - 160, 560))
+    GAME_FONT = pygame.font.SysFont("comicsans", 40)
+    text = GAME_FONT.render("Time: " + format_time(time), 1, BLACK)
+    win.blit(text, (WIDTH - 160, 560))
     # Draw Strikes
-    text = fnt.render("X " * strikes, 1, (255, 0, 0))
+    text = GAME_FONT.render("X " + str(strikes), 1, RED)
     win.blit(text, (20, 560))
     # Draw grid and board
     board.draw()
+
+    # Draw solve button
+    draw_solve_button(win, hover)
+
+
+def draw_solve_button(win, hover):
+    pygame.draw.rect(
+        win, BUTTON_COLOR_HOVER if hover else BUTTON_COLOR, [(WIDTH - SOLVE_BUTTON_TEXT.get_width()) / 2, 560, SOLVE_BUTTON_TEXT.get_width(), SOLVE_BUTTON_TEXT.get_height()])
+    win.blit(SOLVE_BUTTON_TEXT, ((WIDTH - SOLVE_BUTTON_TEXT.get_width()) / 2, 560))
 
 
 def format_time(secs):
     sec = secs % 60
     minute = secs//60
-    hour = minute//60
+    # hour = minute//60
 
     mat = " " + str(minute) + ":" + str(sec)
     return mat
 
 
+def on_solve_button(pos):
+    return pos[0] >= (WIDTH - SOLVE_BUTTON_TEXT.get_width()) / 2 and pos[0] <= (WIDTH - SOLVE_BUTTON_TEXT.get_width()) / 2 + SOLVE_BUTTON_TEXT.get_width() and pos[1] >= 560 and pos[1] <= 560 + SOLVE_BUTTON_TEXT.get_height()
+
+
 def main():
-    win = pygame.display.set_mode((540, 600))
+
+    win = pygame.display.set_mode((WIDTH, 600))
     pygame.display.set_caption("Sudoku")
-    board = Grid(9, 9, 540, 540, win)
+    board = Grid(9, 9, WIDTH, WIDTH, win)
     key = None
     run = True
     start = time.time()
     strikes = 0
     while run:
-
         play_time = round(time.time() - start)
+
+        mouse = pygame.mouse.get_pos()
+        hover = on_solve_button(mouse)
 
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 run = False
+
             if event.type == pygame.KEYDOWN:
-                if event.key == pygame.K_1:
+                if event.key == pygame.K_1 or event.key == pygame.K_KP1:
                     key = 1
-                if event.key == pygame.K_2:
+                if event.key == pygame.K_2 or event.key == pygame.K_KP2:
                     key = 2
-                if event.key == pygame.K_3:
+                if event.key == pygame.K_3 or event.key == pygame.K_KP3:
                     key = 3
-                if event.key == pygame.K_4:
+                if event.key == pygame.K_4 or event.key == pygame.K_KP4:
                     key = 4
-                if event.key == pygame.K_5:
+                if event.key == pygame.K_5 or event.key == pygame.K_KP5:
                     key = 5
-                if event.key == pygame.K_6:
+                if event.key == pygame.K_6 or event.key == pygame.K_KP6:
                     key = 6
-                if event.key == pygame.K_7:
+                if event.key == pygame.K_7 or event.key == pygame.K_KP7:
                     key = 7
-                if event.key == pygame.K_8:
+                if event.key == pygame.K_8 or event.key == pygame.K_KP8:
                     key = 8
-                if event.key == pygame.K_9:
+                if event.key == pygame.K_9 or event.key == pygame.K_KP9:
                     key = 9
-                if event.key == pygame.K_KP1:
-                    key = 1
-                if event.key == pygame.K_KP2:
-                    key = 2
-                if event.key == pygame.K_KP3:
-                    key = 3
-                if event.key == pygame.K_KP4:
-                    key = 4
-                if event.key == pygame.K_KP5:
-                    key = 5
-                if event.key == pygame.K_KP6:
-                    key = 6
-                if event.key == pygame.K_KP7:
-                    key = 7
-                if event.key == pygame.K_KP8:
-                    key = 8
-                if event.key == pygame.K_KP9:
-                    key = 9
+
                 if event.key == pygame.K_DELETE:
                     board.clear()
                     key = None
@@ -333,13 +336,16 @@ def main():
                 if clicked:
                     board.select(clicked[0], clicked[1])
                     key = None
+                elif on_solve_button(pos):
+                    board.solve_gui()
 
         if board.selected and key != None:
             board.sketch(key)
 
-        redraw_window(win, board, play_time, strikes)
+        redraw_window(win, board, play_time, strikes, hover)
         pygame.display.update()
+    pygame.quit()
 
 
-main()
-pygame.quit()
+if __name__ == "__main__":
+    main()
